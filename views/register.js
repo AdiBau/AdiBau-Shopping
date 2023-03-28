@@ -1,130 +1,129 @@
-import React from 'react'
-import { StatusBar } from 'expo-status-bar'
-import { useState } from 'react'
-import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity } from 'react-native'
-import Spinner from 'react-native-loading-spinner-overlay'
-import Massage from '../components/massage'
-import errorSend from '../errorSend/errorSend'
+import React from "react"
+import { StatusBar } from "expo-status-bar"
+import { useState } from "react"
+import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity } from "react-native"
 
-const Register = ({ setViews }) => {
-  const [login, setlogin] = useState('')
-  const [password, setPassword] = useState('')
-  const [spinner, setSpinner] = useState(false)
-  const [massage, setMassage] = useState('')
+import homeOrSerwer from "./homeOrSerwer"
+
+const Register = ({ setViews, setMassage }) => {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
 
   const loginSend = async () => {
-    const data = { login: login, password: password }
+    const data = { email: email, password: password }
 
-    await fetch('https://biuro.adibau.pl/birthday/register', {
-      // await fetch('http://192.168.1.123:8080/birthday/register', {
-      method: 'POST',
+    const url = homeOrSerwer ? "http://192.168.1.123:8080/register" : "https://shopping.adibau.pl/register"
+    await fetch(url, {
+      method: "POST",
       body: JSON.stringify(data),
       headers: {
-        'content-type': 'application/json',
+        "content-type": "application/json",
       },
     })
       .then((data) => {
         if (data.status === 200) {
-          setViews({ login: true, home: false, register: false })
-          setMassage('you are registered, please login yet')
+          setViews({ login: true, register: false })
+          setMassage("You are registered, please login yet")
+          setSpinner(false)
+        } else {
+          setMassage("Please enter another email")
           setSpinner(false)
         }
-        if (data.status === 400) {
-          setMassage('Please enter another login')
-          setSpinner(false)
-        }
-        console.log(data.status)
       })
       .catch((err) => {
-        setMassage('Sorry please try again later')
-        errorSend({ from: 'Register', status: err.status, error: err.massage })
+        setMassage("Sorry please try again later")
         setSpinner(false)
       })
-    setlogin('')
-    setPassword('')
+    setEmail("")
+    setPassword("")
   }
 
   const registerVisible = () => {
-    setViews({ login: true, home: false, register: false })
+    setViews({ login: true })
   }
 
   return (
     <View style={styles.container}>
-      <Image style={styles.image} source={require('../assets/adibauBirthdayReminder.png')} />
+      <Image style={styles.image} source={require("../assets/adibauBirthdayReminder.png")} />
       <StatusBar style='dark' backgroundColor={styles.container.backgroundColor} />
       <View style={styles.inputView}>
-        <TextInput style={styles.TextInput} placeholder='New Login' placeholderTextColor='#003f5c' value={login} onChangeText={(text) => setlogin(text)} maxLength={15} keyboardType='default' />
+        <TextInput style={styles.TextInput} placeholder='EMAIL Address' placeholderTextColor='#003f5c' value={email} onChangeText={(text) => setEmail(text)} maxLength={40} keyboardType='default' />
       </View>
       <View style={styles.inputView}>
         <TextInput
           style={styles.TextInput}
-          placeholder='New PIN Number'
+          placeholder='PIN number'
           placeholderTextColor='#003f5c'
           secureTextEntry={true}
           onChangeText={(password) => setPassword(password)}
           value={password}
-          keyboardType={'decimal-pad'}
-          maxLength={15}
+          keyboardType={"decimal-pad"}
+          maxLength={10}
         />
       </View>
       <TouchableOpacity onPress={registerVisible}>
-        <Text style={styles.new_account}>Log In</Text>
+        <Text style={styles.new_account}>Back to LogIn</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.loginBtn}>
         <Text style={styles.loginText} onPress={loginSend}>
           Register
         </Text>
       </TouchableOpacity>
-      <Spinner visible={spinner} textContent={'Loading ........ '} textStyle={styles.spinnerTextStyle} animation={'slide'} overlayColor='rgba(0,0,0,0.6)' size={'large'} />
-      {massage && <Massage msg={massage} />}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   spinnerTextStyle: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 25,
   },
   container: {
     flex: 1,
-    backgroundColor: '#29a6dc',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#29a6dc",
+    alignItems: "center",
+    justifyContent: "center",
   },
   image: {
-    resizeMode: 'center',
+    resizeMode: "center",
   },
   inputView: {
-    backgroundColor: '#dddddd',
+    backgroundColor: "#dddddd",
     borderRadius: 30,
-    width: '70%',
+    width: "70%",
     height: 45,
     marginBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   TextInput: {
     height: 50,
     flex: 1,
     padding: 10,
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    width: '100%',
+    fontWeight: "bold",
+    textAlign: "center",
+    width: "100%",
   },
   new_account: {
-    height: 30,
+    marginTop: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
     marginBottom: 30,
     fontSize: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+
+    backgroundColor: "#dddddd",
   },
   loginBtn: {
-    width: '80%',
+    width: "80%",
     borderRadius: 25,
     height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 40,
-    backgroundColor: 'lightgreen',
+    backgroundColor: "lightgreen",
   },
 })
 

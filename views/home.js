@@ -1,174 +1,307 @@
-import React from 'react'
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native'
+import React from "react"
+import { ImageBackground, View, Text, StyleSheet, FlatList, Image, TouchableOpacity, check, Keyboard } from "react-native"
+import { getStatusBarHeight } from "react-native-status-bar-height"
+import { TextInput, Button, Menu } from "react-native-paper"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import Icon1 from "react-native-vector-icons/MaterialIcons"
 
-import { useEffect, useState } from 'react'
-import Header from '../components/header'
-import Edit from '../components/edit'
-import errorSend from '../errorSend/errorSend'
+import Icon2 from "react-native-vector-icons/AntDesign"
 
-const Home = ({ setMassage, setViews }) => {
+import { useEffect, useState, useRef, useCallback } from "react"
+import homeOrSerwer from "./homeOrSerwer"
+
+const Home = ({ setMassage, setViews, listID, setSpinner }) => {
   const [refresh, setRefresh] = useState(false)
-  const [data, setData] = useState([])
-  const [edit, setEdit] = useState({ visible: false, id: '' })
-
-  let base = []
+  const [data, setData] = useState()
+  const [text, setText] = useState("")
+  const [cena, setCena] = useState("")
+  const textInput = useRef(null)
+  const priceInput = useRef(null)
 
   useEffect(() => {
     loadData()
   }, [refresh])
 
+  const url = homeOrSerwer ? `http://192.168.1.123:8080/list/${listID}` : `https://shopping.adibau.pl/list/${listID}`
   const loadData = () => {
-     const url = 'https://biuro.adibau.pl/birthday/list'
-   // const url = 'http://192.168.1.123:8080/birthday/list'
+    setSpinner(true)
 
     fetch(url)
       .then((response) => {
-        console.log(response.status)
+        setTimeout(() => setSpinner(false), 500)
+
         if (response.status === 200) {
           return response.json()
         } else {
           return setViews({ login: true })
         }
       })
-      .then((res) => {
-        setData(res)
+      .then((dane) => setData(dane))
+      .catch((err) => {
+        setMassage("Sorry please try again later")
+        console.log("Logowanie error - ", { err })
+        setSpinner(false)
       })
-      .catch((err) => errorSend({ from: 'Home loadData', status: err.status, error: err.massage }))
-
-    base = []
-    modifyList()
   }
 
-  const pozostalo = (date) => {
-    const month = date[5] + date[6]
-    const day = date[8] + date[9]
-    let last = Math.floor((new Date(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()) - new Date(new Date().getFullYear(), Number(month), Number(day))) / 1000 / 60 / 60 / 24)
-    return last < 0 ? (last = Math.abs(last)) : 365 - last
+  const dodaj = () => {
+    setSpinner(true)
+    fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ item: text, price: cena, Id_List: listID }),
+      headers: {
+        "content-type": "application/json",
+      },
+    }).then((data) => {
+      setSpinner(false)
+      if (data.status === 201) {
+        return setRefresh(!refresh)
+      } else {
+        return setMassage("Nie dodano do listy !!!")
+      }
+    })
+    priceInput.current.clear(true)
+    textInput.current.clear(true)
+    priceInput.current.blur()
+    textInput.current.blur()
   }
+  // 44 - on iPhoneX
+  // 20 - on iOS device
+  // X - on Android platfrom (runtime value)
+  // 0 - on all other platforms (default)
 
-  const modifyList = () => {
-    data.map((e) => {
-      base.push({
-        nazwisko: e.nazwisko,
-        imie: e.imie,
-        data: e.data,
-        id: e.id,
-        last: pozostalo(e.data),
-        dataLast: new Date(),
-      })
+  // will be 0 on Android, because You pass true to skipAndroid
+  const editing = (id) => {}
+  const suma = (data) => {
+    let sumPrice = 0
+    if (!data) {
+      return
+    }
+    data.forEach((element) => {
+      sumPrice += element.price
+    })
+    return sumPrice
+  }
+  const logOut = () => {
+    setSpinner(true)
+    const urlLogOut = homeOrSerwer ? "http://192.168.1.123:8080/logout" : "https://shopping.adibau.pl/logout"
+    fetch(urlLogOut).then((data) => {
+      if (data.status === 200) {
+        setMassage("Wylogowano poprawnie")
+        setRefresh(!refresh)
+      } else {
+        setMassage("Nie wylogowano")
+      }
+      setSpinner(false)
     })
   }
 
-  modifyList()
-  function sortBaza() {
-    return base.sort(function (a, b) {
-      let x = a.last
-      let y = b.last
-      return x < y ? -1 : x > y ? 1 : 0
+  const deleteItem = (id) => {
+    const urlDelete = homeOrSerwer ? `http://192.168.1.123:8080/list/${id}` : `https://shopping.adibau.pl/list/${id}`
+    setSpinner(true)
+    setMassage("Kasuje")
+    fetch(urlDelete, {
+      method: "DELETE",
+    }).then((data) => {
+      if (data.status === 200) {
+        setRefresh(!refresh)
+        setMassage("Wykasowano")
+      } else {
+        setMassage("Nie wykasowano")
+      }
+      setSpinner(false)
     })
   }
-
-  const wiek = (data) => {
-    return Math.floor((new Date() - new Date(data)) / 1000 / 60 / 60 / 24 / 364)
-  }
-
-  function editing(id) {
-    setEdit({ visible: true, id: id })
-  }
+  const checked = () => {}
 
   return (
     <>
       <View style={styles.container}>
-        <Header setRefresh={setRefresh} refresh={refresh} setMassage={setMassage} />
-        <Text style={styles.line}></Text>
-        {edit.visible && <Edit id={edit.id} refresh={refresh} setRefresh={setRefresh} setMassage={setMassage} setEdit={setEdit} />}
-        <FlatList
-          data={sortBaza()}
-          renderItem={({ item }) => (
-            <>
-              <TouchableOpacity onLongPress={() => editing(item.id)}>
-                <View style={[styles.viewItem, pozostalo(item.data) < 10 ? { backgroundColor: 'rgba(0, 255, 0, 0.5)' } : '']}>
-                  <View style={styles.imageView}>
-                    <Image
-                      style={styles.image}
-                      resizeMode='stretch'
-                      // style={styles.image}
-                      source={require('../assets/1024px-Brak_zdjęcia.svg.png')}
+        <TouchableOpacity style={styles.viewMenu} onPress={logOut}>
+          <Text style={styles.viewMenu.text}>Wyloguj</Text>
+          <Icon name='logout' size={22} style={styles.icons} />
+        </TouchableOpacity>
+        <View style={styles.viewTextInput}>
+          <TextInput
+            ref={textInput}
+            style={styles.TextInput}
+            label='Dopisz do listy'
+            mode='flat'
+            onChangeText={(text) => setText(text)}
+            value={text}
+            autoFocus={false}
+            //
+            returnKeyType='done'
+            maxLength={100}
+            keyboardType={"default"}
+            multiline={true}
+            onEndEditing={this.clearFocus}
+            onSubmitEditing={Keyboard.dismiss}
+            right={<TextInput.Icon icon='eye' />}
+          />
+          <TextInput
+            ref={priceInput}
+            style={styles.TextInput}
+            right={<TextInput.Icon icon='eye' />}
+            label='cena'
+            mode='flat'
+            onChangeText={(text) => setCena(text)}
+            value={cena}
+            maxLength={10}
+            keyboardType={"decimal-pad"}
+            returnKeyType='done'
+            onSubmitEditing={Keyboard.dismiss}
+            onEndEditing={this.clearFocus}
+          />
 
-                      // uri: `http://192.168.1.123:8080/birthday/image/${item.image}`,
-                    />
-                  </View>
-                  <View style={styles.name}>
-                    <Text style={styles.text}>
-                      {item.nazwisko} {item.imie}
-                    </Text>
+          <Button style={styles.button} icon='transfer-down' mode='contained-tonal' onPress={dodaj}>
+            ZAPISZ
+          </Button>
+        </View>
 
-                    <Text style={styles.text}>ur.{item.data}</Text>
-                    <Text style={styles.text}>lat.{wiek(item.data)}</Text>
-                  </View>
-                  <View style={styles.pozostalo}>
-                    <Text style={styles.text}>Pozostało</Text>
-                    <Text style={styles.text}>{pozostalo(item.data)} dni</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </>
+        <View style={styles.shoppingList}>
+          {!data ? (
+            <Text> - Brak - Lista pusta </Text>
+          ) : (
+            <View style={styles.lista}>
+              <Text style={styles.listaItem}>Twoja lista</Text>
+              <Text style={styles.listaPrice}>Kwota</Text>
+            </View>
           )}
-          keyExtractor={(item) => item.id}
-        ></FlatList>
+
+          <FlatList
+            data={data}
+            renderItem={({ item }) => (
+              <>
+                <TouchableOpacity onLongPress={checked}>
+                  <View style={styles.item}>
+                    <Icon name='delete' size={20} color='#0f0f0f' onPress={() => deleteItem(item.id)}></Icon>
+
+                    {/* <TextInput ref={check} editable={false} style={styles.text} mode='text' value={item.item} maxLength={100} keyboardType={"default"} multiline={true} /> */}
+                    <Text style={styles.text}>{item.item}</Text>
+                    {<Text style={styles.textCena}> {item.price} zł</Text>}
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
+            keyExtractor={(item) => item.id}
+          ></FlatList>
+        </View>
+        <View style={styles.podsumowanie}>
+          <Text> - Wszystkie wpisy - {!data ? 0 : data.length}</Text>
+          <Text> - Przewidywana kwota - {suma(data)}</Text>
+        </View>
       </View>
     </>
   )
 }
+
 const styles = StyleSheet.create({
   container: {
-    display: 'flex',
     flex: 1,
-    // paddingTop: 35,
-    backgroundColor: 'rgb(142, 184, 229)',
-  },
-  imageView: {
-    width: '24%',
-    borderWidth: 1,
-    borderColor: '#fff',
+    backgroundColor: "#29a6dc",
+    marginHorizontal: 10,
     borderRadius: 10,
+    marginTop: getStatusBarHeight(),
+    // marginBottom: getDeviceHeight(),
   },
-  image: {
-    width: '100%',
-    height: '100%',
+  image: {},
+  viewMenu: {
+    width: "99%",
+    flexDirection: "row",
+    // backgroundColor:'red',
+    justifyContent: "flex-end",
+    alignItems: "flex-end",
+    paddingBottom: 5,
+    borderBottomColor: "#0d0106",
+    borderBottomWidth: 1,
+    text: {
+      fontSize: 16,
+      marginRight: 5,
+    },
   },
-  name: {
-    width: '40%',
-    textAlign: 'center',
-    alignItems: 'center',
+  button: {
+    // width: "40%",
+    alignSelf: "center",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    paddingVertical: 1,
+    marginVertical: 10,
+    borderWidth: 3,
+    borderColor: "#29a6dc",
+    textColor: "black",
   },
-
-  text: {
-    fontSize: 15,
-  },
-  viewItem: {
-    alignSelf: 'center',
-    width: '95%',
-    height: 80,
+  viewTextInput: {
+    width: "98%",
     marginTop: 5,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-    borderRadius: 10,
+    marginBottom: 15,
+    paddingTop: 2,
+    alignSelf: "center",
+    backgroundColor: "rgba(200,200,200,0.5)",
+    borderRadius: 25,
   },
-  line: {
-    width: '100%',
-    borderColor: '#ddd',
+  TextInput: {
+    padding: 1,
+    marginVertical: 2,
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    width: "95%",
+    alignSelf: "center",
+    color: "white",
+    backgroundColor: "transparent",
+    borderRadius: 15,
+  },
+  shoppingList: {
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  lista: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderBottomWidth: 2,
+    marginBottom: 10,
   },
-  textItem: { fontWeight: 'bold' },
-  pozostalo: {
-    width: '20%',
-    textAlign: 'center',
-    alignItems: 'center',
+  listaItem: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  listaPrice: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  item: {
+    width: "96%",
+
+    marginVertical: 5,
+    marginHorizontal: 10,
+    paddingVertical: 3,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomColor: "#f0f0f0",
+    borderBottomWidth: 1,
+    flexWrap: "nowrap",
+  },
+  text: {
+    fontSize: 16,
+    paddingHorizontal: 10,
+    flex: 1,
+    backgroundColor: "transparent",
+    textAlign: "center",
+    // flexShrink: 1,
+  },
+
+  podsumowanie: {
+    display: "flex",
+    marginVertical: 2,
+    marginHorizontal: 10,
+    marginBottom: 20,
+    flexDirection: "row",
+    justifyContent: `space-between`,
   },
 })
 

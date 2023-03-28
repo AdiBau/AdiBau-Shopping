@@ -1,121 +1,143 @@
-import React, { useEffect } from 'react'
-import { StatusBar } from 'expo-status-bar'
-import { useState } from 'react'
-import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity } from 'react-native'
-import Spinner from 'react-native-loading-spinner-overlay'
-import errorSend from '../errorSend/errorSend'
-const Login = ({ setViews, setMassage }) => {
-  const [login, setlogin] = useState({ login: '', password: '' })
-  const [spinner, setSpinner] = useState(false)
+import React, { useEffect, useState } from "react"
+import axios from "axios"
+import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity } from "react-native"
+import homeOrSerwer from "./homeOrSerwer"
+
+const Login = ({ setViews, setMassage, setSpinner }) => {
+  const [data, setData] = useState({ email: "", password: "" })
 
   const loginSend = async () => {
+    if (!data.email || !data.password) {
+      return setMassage("Prosze wpisać email i PIN")
+    }
     setSpinner(true)
-    const data = { login: login.login, password: login.password }
-
-    await fetch('https://biuro.adibau.pl/birthday/login', {
-   // await fetch('http://192.168.1.123:8080/birthday/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
+    const url = homeOrSerwer ? "http://192.168.1.123:8080/login" : "https://shopping.adibau.pl/login"
+    await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ email: data.email, password: data.password }),
       headers: {
-        'content-type': 'application/json',
+        "content-type": "application/json",
       },
     })
       .then((data) => {
-        if (data.status === 200) {
-          setViews({ login: false, home: true })
+        console.log(data.status)
+        if (data.status === 202) {
+          setViews({ login: false, listAll: true })
         } else {
-          setMassage('Błędny login lub password')
-          setSpinner(false)
+          setMassage("Błędny email lub password")
+          console.log(data.status)
         }
-      })
-      .catch((err) => {
-        setMassage('Sorry please try again later')
-        errorSend({ from: 'Login', status: err.status, error: err.massage })
+        if (data.status === 502) {
+          setViews({ login: true })
+          setMassage("Coś sie porobiło pracuje nad tym")
+        }
         setSpinner(false)
       })
-    setlogin({})
+
+      .catch((err) => {
+        setMassage("Sorry please try again later")
+        console.log("Logowanie error - ", { err })
+        setSpinner(false)
+      })
+    // only in https
+    setData({})
   }
+
   const registerVisible = () => {
-    setViews({ login: false, home: false, register: true })
+    setViews({ register: true })
   }
 
   return (
     <>
       <View style={styles.container}>
-        <Image style={styles.image} source={require('../assets/adibauBirthdayReminder.png')} />
-        <StatusBar style='auto' backgroundColor={styles.container.backgroundColor} />
+        <Image style={styles.image} source={require("../assets/adibauBirthdayReminder.png")} />
+
         <View style={styles.inputView}>
-          <TextInput style={styles.TextInput} placeholder='Login' placeholderTextColor='#003f5c' value={login.login} onChangeText={(login) => setlogin({ ...login, login })} maxLength={15} />
+          <TextInput
+            style={styles.TextInput}
+            placeholder='email'
+            placeholderTextColor='#003f5c'
+            keyboardType='email-address'
+            value={data.email}
+            onChangeText={(email) => setData({ ...data, email })}
+            maxLength={30}
+            returnKeyType='done'
+            autoComplete='email'
+          />
         </View>
         <View style={styles.inputView}>
           <TextInput
             style={styles.TextInput}
-            placeholder='Password'
+            placeholder='Password PIN'
             placeholderTextColor='#003f5c'
             secureTextEntry={true}
-            onChangeText={(password) => setlogin({ ...login, password })}
-            value={login.password}
-            keyboardType={'decimal-pad'}
-            maxLength={15}
+            onChangeText={(password) => setData({ ...data, password })}
+            value={data.password}
+            keyboardType={"decimal-pad"}
+            maxLength={10}
+            returnKeyType='done'
           />
         </View>
-        <TouchableOpacity onPress={registerVisible}>
-          <Text style={styles.new_account}>New Account</Text>
+        <TouchableOpacity onPress={registerVisible} style={styles.new_account}>
+          <Text>New Account</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.loginBtn} onPress={loginSend}>
           <Text style={styles.loginText}>LOGIN</Text>
         </TouchableOpacity>
       </View>
-      <Spinner visible={spinner} textContent={'Loading ........ '} textStyle={styles.spinnerTextStyle} animation={'slide'} overlayColor='rgba(0,0,0,0.6)' size={'large'} />
     </>
   )
 }
 
 const styles = StyleSheet.create({
   spinnerTextStyle: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 25,
   },
   container: {
     flex: 1,
-    backgroundColor: '#29a6dc',
-    alignItems: 'center',
-    justifyContent: 'center',
+
+    backgroundColor: "#29a6dc",
+    alignItems: "center",
+    justifyContent: "center",
   },
   image: {
-    resizeMode: 'center',
+    resizeMode: "center",
   },
   inputView: {
-    backgroundColor: '#dddddd',
+    backgroundColor: "#dddddd",
     borderRadius: 30,
-    width: '70%',
+    width: "70%",
     height: 45,
     marginBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   TextInput: {
     height: 50,
     flex: 1,
     padding: 10,
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    width: '100%',
+    fontWeight: "bold",
+    textAlign: "center",
+    width: "100%",
   },
   new_account: {
+    width: "40%",
+    borderRadius: 15,
     height: 30,
-    marginBottom: 30,
-    fontSize: 16,
-    backgroundColor: 'rgba(255, 255, 255)',
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 40,
+    backgroundColor: "#70cb89",
   },
   loginBtn: {
-    width: '80%',
+    width: "80%",
     borderRadius: 25,
     height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 40,
-    backgroundColor: 'lightgreen',
+    backgroundColor: "lightgreen",
   },
 })
 
